@@ -1,0 +1,6 @@
+:set -isrc
+:l Database.Migrate
+:m + Database.Migrate
+:set prompt ">> "
+:set -Wall
+

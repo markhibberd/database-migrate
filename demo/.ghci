@@ -1,0 +1,5 @@
+:set -i../src -i.
+:l Main
+:set prompt "demo>> "
+:set -Wall
+

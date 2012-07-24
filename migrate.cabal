@@ -1,0 +1,32 @@
+Name:               migrate
+Version:            0.0.1
+License:            BSD3
+Author:             Mark Hibberd <mark@hibberd.id.au>
+Maintainer:         Mark Hibberd <mark@hibberd.id.au>
+Copyright:          Mark Hibberd
+Synopsis:           Database scheman migration tool
+Category:           Experimental
+Description:        Database scheman migration tool
+Homepage:           https://github.com/markhibberd/migrate
+Cabal-Version:      >= 1.6
+Build-Type:         Simple
+
+Source-Repository   head
+  Type:             git
+  Location:         https://github.com/markhibberd/migrate.git
+
+Flag                small_base
+  Description:      Choose the new, split-up base package.
+
+Library
+  Build-Depends:
+                    base >= 3 && < 5
+
+  GHC-Options:
+                    -Wall
+
+  Hs-Source-Dirs:
+                    src
+
+  Exposed-Modules:
+                    Database.Migrate
