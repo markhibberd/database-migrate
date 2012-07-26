@@ -2,4 +2,4 @@
 :l Main
 :set prompt "demo>> "
 :set -Wall
-
+:set -XMultiParamTypeClasses

@@ -27,12 +27,16 @@ Library
                     , postgresql-simple             >= 0.1        && < 1.0
                     , containers                    >= 0.4        && < 0.5
 
-
   GHC-Options:
-                    -Wall
+                    -Wall -threaded -O2 -fno-warn-orphans
 
   Hs-Source-Dirs:
                     src
 
   Exposed-Modules:
                     Database.Migrate
+
+  Extensions:
+                    MultiParamTypeClasses
+
+

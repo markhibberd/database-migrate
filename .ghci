@@ -1,6 +1,7 @@
 :set -isrc
+:set -Wall -XMultiParamTypeClasses -fno-warn-orphans
 :l Database.Migrate
 :m + Database.Migrate
 :set prompt ">> "
-:set -Wall
+
 

@@ -1,9 +1,8 @@
-{-#LANGUAGE MultiParamTypeClasses #-}
 module Database.Migrate.Core where
 
-import Data.ByteString hiding (foldr, filter)
+import Data.ByteString hiding (foldr, filter, reverse)
 import qualified Data.Set as S
-import Data.Text hiding (foldr, filter)
+import Data.Text hiding (foldr, filter, reverse)
 import Data.Time
 
 newtype MigrationId =
@@ -32,7 +31,7 @@ data Column = Column {
   , primary :: Bool
   }
 
-data Update =
+data Change =
   CreateTable TableName [Column]
   | DropTable TableName
   | RenameTable TableName TableName
@@ -47,8 +46,8 @@ data Update =
 data Migration =
   Migration {
       migrationId :: MigrationId
-    , up :: Update
-    , down :: Update
+    , up :: Change
+    , down :: Change
     }
 
 data MigrationResult =
@@ -57,8 +56,8 @@ data MigrationResult =
   | MigrationFailed
   | MigrationUnsupported
 
-class MigrateDatabase m c where
-  runMigrations :: c -> [Migration] -> m MigrationResult
+class Monad m => MigrateDatabase m c where
+  runMigrations :: c -> (Migration -> Change) -> [Migration] -> m MigrationResult
   getMigrations :: c -> m [MigrationId]
 
 pick :: [Migration] -> [MigrationId] -> [Migration]
@@ -68,20 +67,7 @@ pick ms ids =
       torun = S.difference available installed
    in filter (\m -> S.member (migrationId m) torun) ms
 
-
-
 latest :: MigrateDatabase m c => c -> [Migration] -> m MigrationResult
 latest c migrations =
-  getMigrations c >>= \installed -> runMigrations (pick c migrations)
+  getMigrations c >>= \installed -> runMigrations c up (pick migrations installed)
 
-
-
-
-
-
-add ::
-  Int
-  -> Int
-  -> Int
-add =
-  (+)

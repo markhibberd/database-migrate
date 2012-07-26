@@ -3,4 +3,4 @@
 :l Main
 :set prompt "test>> "
 :set -Wall
-
+:set -XMultiParamTypeClasses
