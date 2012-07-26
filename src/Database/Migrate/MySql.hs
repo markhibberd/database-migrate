@@ -1,2 +1,2 @@
-module Database.Migrate.Mysql where
+module Database.Migrate.MySql where
 

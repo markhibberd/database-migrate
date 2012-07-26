@@ -1,14 +1,13 @@
+{-#LANGUAGE MultiParamTypeClasses #-}
 module Database.Migrate.Core where
 
-import Data.Text
-
-data Column = Column
-data Constraint = Constraint
-data Index = Index
-data Table = Table Text [Column] [Constraint] [Index]
+import Data.ByteString hiding (foldr, filter)
+import qualified Data.Set as S
+import Data.Text hiding (foldr, filter)
+import Data.Time
 
 newtype MigrationId =
-  MigrationId String
+  MigrationId String deriving (Eq, Show, Ord)
 
 type TableName = Text
 type IndexName = Text
@@ -23,7 +22,7 @@ data DbType =
   | DbDate (Maybe Day)
   | DbTime (Maybe TimeOfDay)
   | DbBinary (Maybe Int) (Maybe ByteString)
-  | DbBoolean (Maybe Boolean)
+  | DbBoolean (Maybe Bool)
   | DbAutoInc
 
 data Column = Column {
@@ -47,7 +46,7 @@ data Update =
 
 data Migration =
   Migration {
-    , migrationId :: MigrationId
+      migrationId :: MigrationId
     , up :: Update
     , down :: Update
     }
@@ -61,6 +60,19 @@ data MigrationResult =
 class MigrateDatabase m c where
   runMigrations :: c -> [Migration] -> m MigrationResult
   getMigrations :: c -> m [MigrationId]
+
+pick :: [Migration] -> [MigrationId] -> [Migration]
+pick ms ids =
+  let available = foldr (S.insert . migrationId) S.empty ms
+      installed = S.fromList ids
+      torun = S.difference available installed
+   in filter (\m -> S.member (migrationId m) torun) ms
+
+
+
+latest :: MigrateDatabase m c => c -> [Migration] -> m MigrationResult
+latest c migrations =
+  getMigrations c >>= \installed -> runMigrations (pick c migrations)
 
 
 

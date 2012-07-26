@@ -1,2 +1,2 @@
-module Database.Migrate.Postgesql where
+module Database.Migrate.Postgresql where
 
