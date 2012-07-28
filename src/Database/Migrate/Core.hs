@@ -1,27 +1,42 @@
 module Database.Migrate.Core where
 
-import Data.ByteString hiding (foldr, filter, reverse)
 import qualified Data.Set as S
 import Data.Text hiding (foldr, filter, reverse)
 import Data.Time
 
 newtype MigrationId =
-  MigrationId String deriving (Eq, Show, Ord)
+  MigrationId Text deriving (Eq, Show, Ord)
+
 
 type TableName = Text
 type IndexName = Text
 type ColumnName = Text
 
+data Default a =
+    DefaultNone
+  | DefaultValue a
+  | DefaultFunc Text
+
+foldDefault :: b -> (a -> b) -> (Text -> b) -> Default a -> b
+foldDefault b _ _ DefaultNone = b
+foldDefault _ f _ (DefaultValue a) = f a
+foldDefault _ _ f (DefaultFunc t) = f t
+
 data DbType =
-    DbString (Maybe Int) (Maybe Text)
-  | DbText (Maybe Int) (Maybe Text)
-  | DbInteger (Maybe Int) (Maybe Int)
-  | DbDouble (Maybe Double)
-  | DbTimestamp (Maybe UTCTime)
-  | DbDate (Maybe Day)
-  | DbTime (Maybe TimeOfDay)
-  | DbBinary (Maybe Int) (Maybe ByteString)
-  | DbBoolean (Maybe Bool)
+    DbString Int (Default Text)
+  | DbText (Default Text)
+  | DbSmallInt (Default Int)
+  | DbInt (Default Int)
+  | DbBigInt (Default Integer)
+  | DbNumeric (Maybe Int) (Default Integer)
+  | DbNumericWithScale (Maybe Int) (Maybe Int) (Default (Integer, Integer))
+  | DbFloat (Default Float)
+  | DbDouble (Default Double)
+  | DbTimestamp (Default UTCTime)
+  | DbDate (Default Day)
+  | DbTime (Default TimeOfDay)
+  | DbBinary
+  | DbBoolean (Default Bool)
   | DbAutoInc
 
 data Column = Column {
@@ -52,11 +67,12 @@ data Migration =
 
 data MigrationResult =
   MigrationOk
-  | MigrationRollback
-  | MigrationFailed
+  | MigrationRollback Text
+  | MigrationFailed Text
   | MigrationUnsupported
 
 class Monad m => MigrateDatabase m c where
+  initialize :: c -> m ()
   runMigrations :: c -> (Migration -> Change) -> [Migration] -> m MigrationResult
   getMigrations :: c -> m [MigrationId]
 
