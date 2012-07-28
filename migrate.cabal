@@ -37,6 +37,7 @@ Library
                     Database.Migrate
 
   Extensions:
-                    MultiParamTypeClasses
+                    MultiParamTypeClasse
+                    OverloadedStrings
 
 

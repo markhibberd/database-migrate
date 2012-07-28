@@ -1,3 +1,4 @@
+{-#LANGUAGE OverloadedStrings #-}
 module Database.Migrate.Core where
 
 import qualified Data.Set as S
@@ -40,7 +41,7 @@ data DbType =
   | DbAutoInc
 
 data Column = Column {
-    name :: ColumnName
+    name :: Text
   , datatype :: DbType
   , nullable :: Bool
   , primary :: Bool
@@ -58,22 +59,37 @@ data Change =
   | DropIndex TableName IndexName
   | RunSql Text
 
+data ChangeSet = ChangeSet {
+    up :: Change
+  , down :: Change
+  }
+
 data Migration =
   Migration {
       migrationId :: MigrationId
-    , up :: Change
-    , down :: Change
+    , changes :: [ChangeSet]
     }
+
+
+createTable :: TableName -> [Column] -> ChangeSet
+createTable t cs = ChangeSet (CreateTable t cs) (DropTable t)
+
+surrogate :: Column
+surrogate = Column "id" DbAutoInc  False True
+
+stdstring :: ColumnName -> Column
+stdstring n = Column n (DbString 255 DefaultNone) True False
 
 data MigrationResult =
   MigrationOk
   | MigrationRollback Text
   | MigrationFailed Text
   | MigrationUnsupported
+  deriving (Eq, Show)
 
 class Monad m => MigrateDatabase m c where
   initialize :: c -> m ()
-  runMigrations :: c -> (Migration -> Change) -> [Migration] -> m MigrationResult
+  runMigrations :: c -> (Migration -> [Change]) -> [Migration] -> m MigrationResult
   getMigrations :: c -> m [MigrationId]
 
 pick :: [Migration] -> [MigrationId] -> [Migration]
@@ -85,5 +101,5 @@ pick ms ids =
 
 latest :: MigrateDatabase m c => c -> [Migration] -> m MigrationResult
 latest c migrations =
-  getMigrations c >>= \installed -> runMigrations c up (pick migrations installed)
+  getMigrations c >>= \installed -> runMigrations c (\m -> fmap up $ changes m) (pick migrations installed)
 

@@ -1,10 +1,15 @@
 module Main where
 
+import System.Environment
 import Database.Migrate.Demo
 
 
 main ::
   IO ()
-main = 
-  putStrLn ("add 7 and 8: " ++ show add7and8)
+main =
+  getArgs >>= \args ->
+    if args == ["update"]
+      then runDemoLatest
+      else runDemoList
+
 

@@ -7,6 +7,7 @@ import Database.Migrate.Core
 import Data.Text hiding (filter)
 import Data.Monoid
 import Data.String (IsString(..))
+import Debug.Trace
 
 (<<>>) :: Text -> Text -> Text
 (<<>>) = mappend
@@ -24,24 +25,28 @@ record :: Connection -> MigrationId -> IO ()
 record conn (MigrationId mid) =
   fmap (const ()) $ execute conn "INSERT INTO MIGRATION_INFO VALUES (?)" (Only mid)
 
-queryOf :: Connection -> (Migration -> Change) -> Migration -> IO ()
-queryOf c f m = queryOf' c (f m) >> (record c (migrationId m))
+queryOf :: Connection -> (Migration -> [Change]) -> Migration -> IO ()
+queryOf c f m = mapM_ (queryOf' c) (f m) >> (record c (migrationId m))
+
+execute' c q = do
+  putTraceMsg (show q)
+  execute_ c (fromText q)
 
 queryOf' :: Connection -> Change -> IO ()
 queryOf' conn ch = fmap (const ()) $
   case ch of
     CreateTable t cs ->
-      let q = "CREATE TABLE ? (" <<>> (intercalate "," (fmap col cs)) <<>> ")"
-       in execute conn (fromText q) (Only t)
-    DropTable t -> execute conn "DROP TABLE ?" (Only t)
-    RenameTable t t' -> execute conn "ALTER TABLE ? RENAME TO ?" (t, t')
-    AddColumn t c -> execute conn (fromText $ "ALTER TABLE ? ADD COLUMN " <<>> col c) (Only t)
-    DropColumn t c -> execute conn "ALTER TABLE ? DROP COLUMN ?" (t, c)
-    RenameColumn t c c' -> execute conn "ALTER TABLE ? RENAME COLUMN ? TO ?" (t, c, c')
+      let q = "CREATE TABLE " <<>> t <<>> " (" <<>> (intercalate "," (fmap col cs)) <<>> ")"
+       in execute' conn q
+    DropTable t -> execute' conn $ "DROP TABLE " <<>> t
+    RenameTable t t' -> execute' conn $ "ALTER TABLE " <<>> t <<>> " RENAME TO " <<>> t' <<>> ""
+    AddColumn t c -> execute' conn $ "ALTER TABLE " <<>> t <<>> " ADD COLUMN " <<>> col c
+    DropColumn t c -> execute' conn $ "ALTER TABLE " <<>> t <<>> " DROP COLUMN " <<>> c <<>> ""
+    RenameColumn t c c' -> execute' conn $ "ALTER TABLE " <<>> t <<>> " RENAME COLUMN " <<>> c <<>> " TO " <<>> c' <<>> ""
     UpdateColumn t c -> undefined
     AddIndex t i cs -> undefined
-    DropIndex _ i -> execute conn "DROP INDEX ?" (Only i)
-    RunSql s -> execute_ conn (fromText s)
+    DropIndex _ i -> execute' conn $ "DROP INDEX " <<>> i <<>> ""
+    RunSql s -> execute' conn s
 
 fromText :: Text -> Query
 fromText = fromString . unpack
