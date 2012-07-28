@@ -13,8 +13,6 @@ import System.FilePath
 import System.Directory
 import System.IO
 
-import Debug.Trace
-
 type MigrationId = Text
 type Ddl = Text
 
