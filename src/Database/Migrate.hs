@@ -8,11 +8,12 @@
 -- A library to assist with managing database versioning
 -- and migration.
 --
--- Note: This library is under heavy development, currently
---       the PostgreSQL implementation is functional, but
---       expected to change. It is intended that a type safe
---       migration api and command line tools be added to this
---       library before it be considered stable.
+--  /Note/: This library is under heavy development, currently
+--  the PostgreSQL implementation is functional, but
+--  expected to change. It is intended that a type safe
+--  migration api, command line tools and MySql support be added
+--  before this library will be considered stable.
+--
 module Database.Migrate (module X) where
 
 import Database.Migrate.Core as X

@@ -1,5 +1,5 @@
-Name:               migrate
-Version:            0.0.1
+Name:               database-migrate
+Version:            0.0.2
 License:            BSD3
 License-File:       LICENSE
 Author:             Mark Hibberd <mark@hibberd.id.au>
@@ -13,13 +13,12 @@ Cabal-Version:      >= 1.6
 Build-Type:         Simple
 Description:
   A database versioning and migration library.
-
-  Note that this library is under heavy development, currently
+  .
+  /Note/: This library is under heavy development, currently
   the PostgreSQL implementation is functional, but
   expected to change. It is intended that a type safe
-  migration api and command line tools be added to this
-  library before it be considered stable.
-
+  migration api, command line tools and MySql support be added
+  before this library will be considered stable.
 
 Source-Repository   head
   Type:             git
@@ -49,6 +48,8 @@ Library
 
   Exposed-Modules:
                     Database.Migrate
+                    Database.Migrate.Core
+                    Database.Migrate.PostgreSQL
 
   Extensions:
                     MultiParamTypeClasses

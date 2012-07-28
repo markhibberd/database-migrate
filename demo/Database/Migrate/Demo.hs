@@ -30,5 +30,5 @@ runDemoLatest = do
     Left e -> putStrLn e
     Right ms -> putTraceMsg (show (fmap migration ms)) >> runEitherT (latest c ms) >>= \er ->
       case er of
-        Left ctx -> putStrLn . show $ ctx
+        Left ctx -> print ctx
         Right mids -> forM_ mids $ \mid -> putStrLn $ "applied:migration: " ++ unpack mid

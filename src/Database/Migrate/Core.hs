@@ -21,8 +21,8 @@ data Migration =
       migration :: MigrationId
     , up :: Text
     , down :: Text
-    , upsource :: Maybe (FilePath)
-    , downsource :: Maybe (FilePath)
+    , upsource :: Maybe FilePath
+    , downsource :: Maybe FilePath
     }
 
 data Context = Context {
@@ -54,7 +54,7 @@ find :: FilePath -> EitherT String IO [Migration]
 find b = liftIO (getDirectoryContents b) >>= \fs -> liftIO (migrationids b fs) >>=
   mapM (\p ->
          do downexists <- liftIO $ doesFileExist (b </> p <.> "down.sql")
-            when (not downexists) (left $ "no down.sql for migration [" ++ p ++ "]")
+            unless downexists (left $ "no down.sql for migration [" ++ p ++ "]")
             u <- liftIO . readFile $ b </> p <.> "up.sql"
             d <- liftIO . readFile $ b </> p <.> "down.sql"
             right (Migration (pack p) (pack u) (pack d) (Just $ b </> p <.> "up.sql") (Just $ b </> p <.> "down.sql")))

@@ -13,13 +13,12 @@ import Database.PostgreSQL.Simple
 import Database.Migrate.Core
 
 instance MigrateDatabase IO Connection where
-  initialize c = execute_ c "CREATE TABLE IF NOT EXISTS MIGRATION_INFO (MIGRATION VARCHAR(50) PRIMARY KEY)" >> return ()
+  initialize c = void $ execute_ c "CREATE TABLE IF NOT EXISTS MIGRATION_INFO (MIGRATION VARCHAR(50) PRIMARY KEY)"
   runMigrations = runall
   getMigrations c = fmap (fmap fromOnly) (query_ c "SELECT MIGRATION FROM MIGRATION_INFO")
 
 record :: Connection -> MigrationId -> IO ()
-record conn mid =
-  fmap (const ()) $ execute conn "INSERT INTO MIGRATION_INFO VALUES (?)" (Only mid)
+record conn mid = void $ execute conn "INSERT INTO MIGRATION_INFO VALUES (?)" (Only mid)
 
 runall :: Connection -> (Migration -> Ddl) -> [Migration] -> MigrationResultT IO [MigrationId]
 runall c f ms =
