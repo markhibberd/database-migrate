@@ -1,10 +1,10 @@
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 import qualified Paths_database_migrate as Program (version)
 
 import Data.Version (showVersion)
 import System.Console.CmdArgs.Explicit
 import System.Exit
 
-usage :: [String]
 usage = [
     "usage: migrate [-v|--verbose] [-d|--dry-run] [-t|--test-run] [-a|--auto] [-s|--scripts DIR]"
   , "               [-p|--postgres CONNECTION] [-m|--mysql CONNECTION] [VERSION]"
@@ -23,7 +23,6 @@ data Arguments = Arguments {
   , version :: Maybe String
   } deriving (Eq, Show)
 
-defaultArguments :: Arguments
 defaultArguments = Arguments {
     printhelp = False
   , printversion = False
@@ -35,7 +34,6 @@ defaultArguments = Arguments {
   , version = Nothing
   }
 
-migratemode :: Mode Arguments
 migratemode =
   mode "migrate" defaultArguments "" (flagArg (\v a -> Right $ a { version = Just v }) "VERSION") [
       flagNone [ "h", "help" ]     (\a -> a { printhelp = True })    "print help and exit"
@@ -43,10 +41,8 @@ migratemode =
     , flagNone [ "d", "dry-run" ]  (\a -> a { dry = True })          "do not perform any updates"
     ]
 
-migrate :: IO ()
 migrate = undefined
 
-run :: Arguments -> IO ()
 run args
   | printhelp args      = mapM_ putStrLn usage
   | printversion args   = putStrLn $ "migrate " ++ showVersion Program.version
