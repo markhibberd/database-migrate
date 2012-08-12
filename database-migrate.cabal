@@ -9,7 +9,7 @@ Synopsis:           Database versioning and migration
 Category:           Database
 Homepage:           https://github.com/markhibberd/database-migrate
 Bug-reports:           https://github.com/markhibberd/database-migrate/issues
-Cabal-Version:      >= 1.6
+Cabal-Version:      >= 1.8
 Build-Type:         Simple
 Description:
   A database versioning and migration library.
@@ -29,7 +29,7 @@ Flag                small_base
 
 Library
   Build-Depends:
-                    base >= 3 && < 5
+                    base                            >= 3          && < 5
                     , text                          >= 0.11       && < 0.12
                     , directory                     >= 1.0        && < 2.0
                     , filepath                      >= 1.0        && < 2.0
@@ -55,4 +55,13 @@ Library
                     MultiParamTypeClasses
                     OverloadedStrings
 
+
+Executable          migrate
+  Main-Is:          main.hs
+  Hs-Source-Dirs:   src
+  Ghc-Options:      -Wall -O2
+  Build-Depends:
+                    base                            >= 3          && < 5
+                    , database-migrate
+                    , cmdargs                       >= 0.9.3      && < 1.0.0
 

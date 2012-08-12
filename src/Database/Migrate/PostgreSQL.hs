@@ -12,6 +12,8 @@ import Data.String (IsString(..))
 import Database.PostgreSQL.Simple
 import Database.Migrate.Core
 
+import Debug.Trace
+
 instance MigrateDatabase IO Connection where
   initialize c = void $ execute_ c "CREATE TABLE IF NOT EXISTS MIGRATION_INFO (MIGRATION VARCHAR(50) PRIMARY KEY)"
   runMigrations = runall
@@ -23,11 +25,12 @@ record conn mid = void $ execute conn "INSERT INTO MIGRATION_INFO VALUES (?)" (O
 runall :: Connection -> (Migration -> Ddl) -> [Migration] -> MigrationResultT IO [MigrationId]
 runall c f ms =
   liftIO (begin c) >>
+    liftIO (putTraceMsg ("running: " ++ show (fmap migration ms))) >>
     (foldM (\rs m ->
              EitherT $
                do e <- runEitherT (saferun c f m)
                   case e of
-                    Left emsg -> rollback c >> (return . Left $ Context (reverse rs) (migration m) emsg True)
+                    Left emsg -> liftIO (putTraceMsg $ "rolling back: " ++ show emsg) >> rollback c >> (return . Left $ Context (reverse rs) (migration m) emsg True)
                     Right r -> return . Right $ r:rs) [] ms) >>= \result -> liftIO (commit c) >> return (reverse result)
 
 saferun :: Connection -> (Migration -> Ddl) -> Migration -> EitherT Text IO MigrationId

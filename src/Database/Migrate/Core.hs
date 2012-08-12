@@ -13,6 +13,8 @@ import System.FilePath
 import System.Directory
 import System.IO
 
+import Debug.Trace
+
 type MigrationId = Text
 type Ddl = Text
 
@@ -44,7 +46,7 @@ pick ms ids =
   let available = foldr (S.insert . migration) S.empty ms
       installed = S.fromList ids
       torun = S.difference available installed
-   in filter (\m -> S.member (migration m) torun) ms
+   in trace ("/xx/ " ++ show (fmap migration ms) ++ " /yy/ " ++ show torun) (filter (\m -> S.member (migration m) torun) ms)
 
 latest :: MigrateDatabase m c => c -> [Migration] -> MigrationResultT m [MigrationId]
 latest c migrations =
