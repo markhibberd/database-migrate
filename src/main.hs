@@ -1,7 +1,11 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 import qualified Paths_database_migrate as Program (version)
 
+import qualified Data.Text as T
 import Data.Version (showVersion)
+
+import Database.PostgreSQL.Simple
+
 import System.Console.CmdArgs.Explicit
 import System.Directory
 import System.Exit
