@@ -6,8 +6,8 @@ import System.Exit
 
 usage :: [String]
 usage = [
-    "usage: migrate [-v|--verbose] [-d|--dry-run] [-t|--test-run] [-a|--auto]"
-  , "               [-p|--postgres connection] [-m|--mysql connection] [VERSION]"
+    "usage: migrate [-v|--verbose] [-d|--dry-run] [-t|--test-run] [-a|--auto] [-s|--scripts DIR]"
+  , "               [-p|--postgres CONNECTION] [-m|--mysql CONNECTION] [VERSION]"
   , "       migrate -h|--help"
   , "       migrate -V|--version"
   ]
