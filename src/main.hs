@@ -44,12 +44,26 @@ migratemode cwd =
     , flagNone [ "d", "dry-run" ]  (\a -> a { dry = True })          "do not perform any updates"
     ]
 
-migrate = undefined
+main =
+  getCurrentDirectory >>= \cwd -> processArgs (migratemode cwd) >>= run
 
 run args
   | printhelp args      = mapM_ putStrLn usage
   | printversion args   = putStrLn $ "migrate " ++ showVersion Program.version
-  | otherwise           = migrate
+  | otherwise           = migrate args
 
-main :: IO ()
-main = getCurrentDirectory >>= \cwd -> processArgs (migratemode cwd) >>= run
+
+bomb msg =
+  putStrLn msg >> exitFailure
+
+migrate args =
+  case (postgres args, mysql args) of
+    (Nothing, Nothing) -> bomb "Must specify at exactly one of -p or -m for database selection, specified none."
+    (Just _, Just _) -> bomb "Must specify at exactly one of -p or -m for database selection, specified two."
+    (Just p, _) -> runpostgres args p
+    (_, Just m) -> runmysql args m
+
+
+runpostgres = undefined
+runmysql = undefined
+
