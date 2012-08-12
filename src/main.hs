@@ -64,6 +64,9 @@ migrate args =
     (_, Just m) -> runmysql args m
 
 
+runmysql _ _ =
+  bomb "Not implemented yet."
+
 runpostgres = undefined
-runmysql = undefined
+
 
