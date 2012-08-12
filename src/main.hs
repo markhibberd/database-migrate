@@ -3,6 +3,7 @@ import qualified Paths_database_migrate as Program (version)
 
 import Data.Version (showVersion)
 import System.Console.CmdArgs.Explicit
+import System.Directory
 import System.Exit
 
 usage = [
@@ -21,9 +22,10 @@ data Arguments = Arguments {
   , postgres :: Maybe String
   , mysql :: Maybe String
   , version :: Maybe String
+  , scripts :: String
   } deriving (Eq, Show)
 
-defaultArguments = Arguments {
+defaultArguments cwd = Arguments {
     printhelp = False
   , printversion = False
   , dry = False
@@ -32,10 +34,11 @@ defaultArguments = Arguments {
   , postgres = Nothing
   , mysql = Nothing
   , version = Nothing
+  , scripts = cwd
   }
 
-migratemode =
-  mode "migrate" defaultArguments "" (flagArg (\v a -> Right $ a { version = Just v }) "VERSION") [
+migratemode cwd =
+  mode "migrate" (defaultArguments cwd) "" (flagArg (\v a -> Right $ a { version = Just v }) "VERSION") [
       flagNone [ "h", "help" ]     (\a -> a { printhelp = True })    "print help and exit"
     , flagNone [ "V", "version" ]  (\a -> a { printversion = True }) "print version and exit"
     , flagNone [ "d", "dry-run" ]  (\a -> a { dry = True })          "do not perform any updates"
@@ -49,4 +52,4 @@ run args
   | otherwise           = migrate
 
 main :: IO ()
-main = processArgs migratemode >>= run
+main = getCurrentDirectory >>= \cwd -> processArgs (migratemode cwd) >>= run

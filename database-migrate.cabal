@@ -64,4 +64,5 @@ Executable          migrate
                     base                            >= 3          && < 5
                     , database-migrate
                     , cmdargs                       >= 0.9.3      && < 1.0.0
+                    , directory                     >= 1.0        && < 2.0
 
