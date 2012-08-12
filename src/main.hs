@@ -56,7 +56,6 @@ run args
   | printversion args   = putStrLn $ "migrate " ++ showVersion Program.version
   | otherwise           = migrate args
 
-
 bomb msg =
   putStrLn msg >> exitFailure
 
@@ -66,7 +65,6 @@ migrate args =
     (Just _, Just _) -> bomb "Must specify at exactly one of -p or -m for database selection, specified two."
     (Just p, _) -> runpostgres args p
     (_, Just m) -> runmysql args m
-
 
 runmysql _ _ =
   bomb "Not implemented yet."
