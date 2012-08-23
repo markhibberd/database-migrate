@@ -1,4 +1,4 @@
-module Database.Migrate.Main where
+module Database.Migrate.Main (defaultMain) where
 
 import qualified Paths_database_migrate as Program (version)
 
@@ -25,8 +25,8 @@ data Arguments = Arguments {
   , dry :: Bool
   , test :: Bool
   , auto :: Bool
-  , postgres :: Maybe String
-  , mysql :: Maybe String
+  , postgres :: Bool
+  , mysql :: Bool
   , version :: Maybe String
   , scripts :: String
   } deriving (Eq, Show)
@@ -37,8 +37,8 @@ defaultArguments cwd = Arguments {
   , dry = False
   , test = False
   , auto = False
-  , postgres = Nothing
-  , mysql = Nothing
+  , postgres = False
+  , mysql = False
   , version = Nothing
   , scripts = cwd
   }
@@ -63,14 +63,14 @@ bomb msg =
 
 migrate args =
   case (postgres args, mysql args) of
-    (Nothing, Nothing) -> bomb "Must specify exactly one of -p or -m for database selection, specified none."
-    (Just _, Just _) -> bomb "Must specify exactly one of -p or -m for database selection, specified two."
-    (Just p, _) -> runpostgres args p
-    (_, Just m) -> runmysql args m
+    (False, False) -> bomb "Must specify exactly one of -p or -m for database selection, specified none."
+    (True, True) -> bomb "Must specify exactly one of -p or -m for database selection, specified two."
+    (True, _) -> runpostgres args
+    (_, True) -> runmysql args
 
-runmysql _ _ =
+runmysql _  =
   bomb "Not implemented yet."
 
-runpostgres args connstr =
+runpostgres args =
   undefined
 

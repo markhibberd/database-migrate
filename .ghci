@@ -1,4 +1,4 @@
-:set -isrc
+:set -isrc -idist/build/autogen
 :set -Wall -XMultiParamTypeClasses -fno-warn-orphans
 :l Database.Migrate
 :m + Database.Migrate

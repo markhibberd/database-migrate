@@ -39,6 +39,7 @@ Library
                     , containers                    >= 0.4        && < 0.5
                     , either                        >= 3.0.2      && < 4.0
                     , transformers                  >= 0.2        && < 0.4
+                    , cmdargs                       >= 0.9.3      && < 1.0.0
 
   GHC-Options:
                     -Wall -fno-warn-orphans
@@ -48,6 +49,7 @@ Library
 
   Exposed-Modules:
                     Database.Migrate
+                    Database.Migrate.Main
                     Database.Migrate.Core
                     Database.Migrate.PostgreSQL
 
