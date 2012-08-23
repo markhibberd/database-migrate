@@ -1,4 +1,4 @@
-{-#LANGUAGE OverloadedStrings #-}
+{-#LANGUAGE OverloadedStrings, ScopedTypeVariables#-}
 module Database.Migrate.Core where
 
 import Control.Monad
@@ -7,15 +7,22 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Either
 
 import qualified Data.Set as S
+import Data.List (sort)
 import Data.Text hiding (foldr, filter, reverse, length)
 
 import System.FilePath
 import System.Directory
 import System.IO
 
-import Debug.Trace
+data MigrationId =
+  MigrationId { extract :: Text } deriving (Eq, Show)
 
-type MigrationId = Text
+instance Ord MigrationId where
+  compare a b =
+   case (reads . unpack . extract $ a, reads . unpack . extract $ b) of
+     ([(i :: Int, "")], [(j :: Int, "")]) -> compare i j
+     _ -> compare (extract a) (extract b)
+
 type Ddl = Text
 
 data Migration =
@@ -25,7 +32,10 @@ data Migration =
     , down :: Text
     , upsource :: Maybe FilePath
     , downsource :: Maybe FilePath
-    }
+    } deriving (Eq, Show)
+
+instance Ord Migration where
+  compare a b = compare (migration a) (migration b)
 
 data Context = Context {
     succeeded :: [MigrationId]
@@ -46,25 +56,26 @@ pick ms ids =
   let available = foldr (S.insert . migration) S.empty ms
       installed = S.fromList ids
       torun = S.difference available installed
-   in trace ("/xx/ " ++ show (fmap migration ms) ++ " /yy/ " ++ show torun) (filter (\m -> S.member (migration m) torun) ms)
+   in filter (\m -> S.member (migration m) torun) ms
 
 latest :: MigrateDatabase m c => c -> [Migration] -> MigrationResultT m [MigrationId]
 latest c migrations =
   lift (getMigrations c) >>= \installed -> runMigrations c up (pick migrations installed)
 
 find :: FilePath -> EitherT String IO [Migration]
-find b = liftIO (getDirectoryContents b) >>= \fs -> liftIO (migrationids b fs) >>=
+find b = liftIO (getDirectoryContents b) >>= \fs -> liftM sort (liftIO (migrationids b fs) >>=
   mapM (\p ->
          do downexists <- liftIO $ doesFileExist (b </> p <.> "down.sql")
             unless downexists (left $ "no down.sql for migration [" ++ p ++ "]")
             u <- liftIO . readFile $ b </> p <.> "up.sql"
             d <- liftIO . readFile $ b </> p <.> "down.sql"
-            right (Migration (pack p) (pack u) (pack d) (Just $ b </> p <.> "up.sql") (Just $ b </> p <.> "down.sql")))
+            right (Migration (MigrationId . pack $ p) (pack u) (pack d) (Just $ b </> p <.> "up.sql") (Just $ b </> p <.> "down.sql"))))
 
 migrationids :: FilePath -> [FilePath] -> IO [String]
 migrationids b ps =
   filterM (\p -> doesFileExist (b </> p)) ps >>= \files ->
-    return (filter (\p -> takeExtensions p == ".up.sql" ) files) >>= \ups -> return (fmap dropExtensions ups)
+    ((return . fmap dropExtensions)
+      (filter (\p -> takeExtensions p == ".up.sql") files))
 
 readFile' :: FilePath -> IO String
 readFile' p = withFile p ReadMode hGetContents

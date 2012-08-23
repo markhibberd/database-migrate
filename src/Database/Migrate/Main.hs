@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+module Database.Migrate.Main where
+
 import qualified Paths_database_migrate as Program (version)
 
 import qualified Data.Text as T
@@ -12,9 +13,8 @@ import System.Exit
 
 usage = [
     "usage: migrate [-v|--verbose] [-d|--dry-run] [-t|--test-run] [-a|--auto] [-s|--scripts DIR]"
-  , "               [-h|--host HOSTNAME] [-p|--port PORTNUMBER] [-u|--user USER] [-P|--password PASSWORD]"
-  , "               "
-  , "               [-g|--postgres] [-m|--mysql] [VERSION]"
+  , "               [-h|--host HOSTNAME] [-p|--port PORTNUMBER] [-u|--user USER]"
+  , "               [-P|--password PASSWORD] [-D|--db DATABASE] [-g|--postgres] [-m|--mysql] [VERSION]"
   , "       migrate -h|--help"
   , "       migrate -V|--version"
   ]
@@ -50,7 +50,7 @@ migratemode cwd =
     , flagNone [ "d", "dry-run" ]  (\a -> a { dry = True })          "do not perform any updates"
     ]
 
-main =
+defaultMain =
   getCurrentDirectory >>= \cwd -> processArgs (migratemode cwd) >>= run
 
 run args
@@ -63,8 +63,8 @@ bomb msg =
 
 migrate args =
   case (postgres args, mysql args) of
-    (Nothing, Nothing) -> bomb "Must specify at exactly one of -p or -m for database selection, specified none."
-    (Just _, Just _) -> bomb "Must specify at exactly one of -p or -m for database selection, specified two."
+    (Nothing, Nothing) -> bomb "Must specify exactly one of -p or -m for database selection, specified none."
+    (Just _, Just _) -> bomb "Must specify exactly one of -p or -m for database selection, specified two."
     (Just p, _) -> runpostgres args p
     (_, Just m) -> runmysql args m
 
@@ -73,5 +73,4 @@ runmysql _ _ =
 
 runpostgres args connstr =
   undefined
-
 
