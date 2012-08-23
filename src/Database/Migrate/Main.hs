@@ -12,9 +12,9 @@ import System.Directory
 import System.Exit
 
 usage = [
-    "usage: migrate [-v|--verbose] [-d|--dry-run] [-t|--test-run] [-a|--auto] [-s|--scripts DIR]"
+    "usage: migrate [-v|--verbose] [-r|--dry-run] [-t|--test-run] [-a|--auto] [-s|--scripts DIR]"
   , "               [-h|--host HOSTNAME] [-p|--port PORTNUMBER] [-u|--user USER]"
-  , "               [-P|--password PASSWORD] [-D|--db DATABASE] [-g|--postgres] [-m|--mysql] [VERSION]"
+  , "               [-P|--password PASSWORD] [-d|--db DATABASE] [-g|--postgres] [-m|--mysql] [VERSION]"
   , "       migrate -h|--help"
   , "       migrate -V|--version"
   ]
@@ -45,9 +45,11 @@ defaultArguments cwd = Arguments {
 
 migratemode cwd =
   mode "migrate" (defaultArguments cwd) "" (flagArg (\v a -> Right $ a { version = Just v }) "VERSION") [
-      flagNone [ "h", "help" ]     (\a -> a { printhelp = True })    "print help and exit"
-    , flagNone [ "V", "version" ]  (\a -> a { printversion = True }) "print version and exit"
-    , flagNone [ "d", "dry-run" ]  (\a -> a { dry = True })          "do not perform any updates"
+      flagNone [ "h", "help" ]     (\a -> a { printhelp = True })    ""
+    , flagNone [ "V", "version" ]  (\a -> a { printversion = True }) ""
+    , flagNone [ "r", "dry-run" ]  (\a -> a { dry = True })          ""
+    , flagNone [ "g", "postgres" ]  (\a -> a { postgres = True })    ""
+    , flagNone [ "m", "mysql" ]  (\a -> a { postgres = True })    ""
     ]
 
 defaultMain =
