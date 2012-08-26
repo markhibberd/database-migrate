@@ -1,5 +1,5 @@
 Name:               database-migrate
-Version:            0.0.2
+Version:            0.0.3
 License:            BSD3
 License-File:       LICENSE
 Author:             Mark Hibberd <mark@hibberd.id.au>
@@ -35,7 +35,7 @@ Library
                     , filepath                      >= 1.0        && < 2.0
                     , bytestring                    >= 0.9        && < 0.10
                     , time                          >= 1.0        && < 2.0
-                    , postgresql-simple             >= 0.1        && < 1.0
+                    , postgresql-simple             == 0.1.4.3
                     , containers                    >= 0.4        && < 0.5
                     , either                        >= 3.0.2      && < 4.0
                     , transformers                  >= 0.2        && < 0.4
@@ -56,16 +56,3 @@ Library
   Extensions:
                     MultiParamTypeClasses
                     OverloadedStrings
-
-
-Executable          migrate
-  Main-Is:          main.hs
-  Hs-Source-Dirs:   src
-  Ghc-Options:      -Wall -O2
-  Build-Depends:
-                    base                            >= 3          && < 5
-                    , database-migrate
-                    , cmdargs                       >= 0.9.3      && < 1.0.0
-                    , directory                     >= 1.0        && < 2.0
-                    , postgresql-simple             >= 0.1        && < 1.0
-                    , text                          >= 0.11       && < 0.12
