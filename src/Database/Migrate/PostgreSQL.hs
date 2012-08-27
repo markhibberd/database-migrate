@@ -6,6 +6,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Either
 
+import Data.Maybe
 import Data.Text hiding (filter, reverse, find, null)
 import Data.String (IsString(..))
 
@@ -21,7 +22,9 @@ instance ToField MigrationId where
   toField (MigrationId m) = toField m
 
 instance MigrateDatabase IO Connection where
+  testconn c =  query_ c "SELECT TRUE" >>= \r -> return $ maybe False fromOnly (listToMaybe r)
   initialize c = void $ execute_ c "CREATE TABLE IF NOT EXISTS MIGRATION_INFO (MIGRATION VARCHAR(50) PRIMARY KEY)"
+  initialized c = query_ c "SELECT TRUE FROM pg_tables WHERE schemaname='public' AND tablename = MIGRATION_INFO" >>= \r -> return $ maybe False fromOnly (listToMaybe r)
   runMigrations = runall
   getMigrations c = fmap (fmap fromOnly) (query_ c "SELECT MIGRATION FROM MIGRATION_INFO")
 

@@ -5,6 +5,9 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Either
+import Control.Monad.Trans.Reader
+import Control.Monad.Trans.Writer
+import Control.Monad.Trans.Maybe
 
 import qualified Data.Set as S
 import Data.List (sort)
@@ -47,9 +50,65 @@ data Context = Context {
 type MigrationResultT = EitherT Context
 
 class Monad m => MigrateDatabase m c where
-  initialize :: c -> m ()
-  runMigrations :: c -> (Migration -> Ddl) -> [Migration] -> MigrationResultT m [MigrationId]
-  getMigrations :: c -> m [MigrationId]
+  testconn :: MM c m Bool
+
+  initialize :: MM c m ()
+  initialized :: MM c m Bool
+
+  runMigration :: Migration -> MM c m ()
+  getMigrations :: MM c m [MigrationId]
+
+  tx :: MM c m () -> MM m c Bool
+  tx m = m >> return True
+
+type Logger = String -> IO ()
+
+data MigrateContext a = MigrateContext {
+    ctxScripts :: FilePath
+  , ctxConnection :: a
+  , ctxDry :: Bool
+  , ctxVerbose :: Bool
+  }
+
+data MigrateLog =
+    MigrateApplied MigrationId
+  | MigrationFailed MigrationId String
+  | MigrationRolledback MigrationId String
+
+newtype MM c m a =
+  MM { runM :: ReaderT (MigrateContext c) (WriterT [MigrateLog] (MaybeT m)) a }
+
+connection :: (Functor m, Monad m) => MM c m c
+connection = MM $ fmap ctxConnection ask
+
+scripts :: (Functor m, Monad m) => MM c m FilePath
+scripts = MM $ fmap ctxScripts ask
+
+isDryRun :: (Functor m, Monad m) => MM c m Bool
+isDryRun= MM $ fmap ctxDry ask
+
+isVerbose :: (Functor m, Monad m) => MM c m Bool
+isVerbose = MM $ fmap ctxDry ask
+
+mlog :: MigrateLog -> M c m a
+mlog l = MM . lift $ tell l
+
+instance Monad f => Functor (MM c f) where
+  fmap f a = a >>= \a' -> return (f a')
+
+instance Monad m => Monad (MM c m) where
+  return a = MM $ return a
+  m >>= k  = MM $ do
+    a <- runM m
+    runM (k a)
+
+instance MonadTrans MM where
+  lift = MM . lift
+
+instance MonadIO m => MonadIO (MM m) where
+  liftIO = lift . liftIO
+
+type M = MM IO
 
 pick :: [Migration] -> [MigrationId] -> [Migration]
 pick ms ids =
