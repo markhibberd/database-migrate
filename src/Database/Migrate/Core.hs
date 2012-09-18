@@ -58,7 +58,7 @@ class Monad m => MigrateDatabase m c where
   runMigration :: Migration -> MM c m ()
   getMigrations :: MM c m [MigrationId]
 
-  tx :: MM c m () -> MM m c Bool
+  tx :: MM c m () -> MM c m Bool
   tx m = m >> return True
 
 type Logger = String -> IO ()
@@ -90,8 +90,8 @@ isDryRun= MM $ fmap ctxDry ask
 isVerbose :: (Functor m, Monad m) => MM c m Bool
 isVerbose = MM $ fmap ctxDry ask
 
-mlog :: MigrateLog -> M c m a
-mlog l = MM . lift $ tell l
+mlog :: Monad m => MigrateLog -> MM c m ()
+mlog l = MM . lift $ tell [l]
 
 instance Monad f => Functor (MM c f) where
   fmap f a = a >>= \a' -> return (f a')
@@ -102,13 +102,11 @@ instance Monad m => Monad (MM c m) where
     a <- runM m
     runM (k a)
 
-instance MonadTrans MM where
-  lift = MM . lift
+instance MonadTrans (MM c) where
+  lift = MM . lift . lift . lift
 
-instance MonadIO m => MonadIO (MM m) where
+instance MonadIO m => MonadIO (MM c m) where
   liftIO = lift . liftIO
-
-type M = MM IO
 
 pick :: [Migration] -> [MigrationId] -> [Migration]
 pick ms ids =
@@ -117,9 +115,15 @@ pick ms ids =
       torun = S.difference available installed
    in filter (\m -> S.member (migration m) torun) ms
 
+{--
 latest :: MigrateDatabase m c => c -> [Migration] -> MigrationResultT m [MigrationId]
 latest c migrations =
-  lift (getMigrations c) >>= \installed -> runMigrations c up (pick migrations installed)
+  do installed << getMigrations
+  lift (getMigrations c) >>= \installed ->
+    let toinstall = pick migrations installed
+
+    runMigrations c up (pick migrations installed)
+--}
 
 find :: FilePath -> EitherT String IO [Migration]
 find b = liftIO (getDirectoryContents b) >>= \fs -> liftM sort (liftIO (migrationids b fs) >>=

@@ -41,42 +41,42 @@ usage = [
 
 globalflags :: [Flag Arguments]
 globalflags = [
-    flagNone [ "h", "help" ]     (\a -> a { dbmode = HelpMode })    e
-  , flagNone [ "V", "version" ]  (\a -> a { dbmode = VersionMode }) e
+    flagNone [ "h", "help" ]     (\a -> a { adbmode = HelpMode })    e
+  , flagNone [ "V", "version" ]  (\a -> a { adbmode = VersionMode }) e
   ]
 
 connectflags :: [Flag Arguments]
 connectflags = [
-    flagReq  [ "H", "hostname" ]   (\v a -> Right $ a { info = (info a) { hostname = Just v } }) e e
-  , flagReq  [ "P", "password" ]   (\v a -> Right $ a { info = (info a) { password = Just v } }) e e
+    flagReq  [ "H", "hostname" ]   (\v a -> Right $ a { ainfo = (ainfo a) { hostname = Just v } }) e e
+  , flagReq  [ "P", "password" ]   (\v a -> Right $ a { ainfo = (ainfo a) { password = Just v } }) e e
   , flagReq  [ "p", "port" ]       (\v a ->
                                      case reads v of
-                                       [(i, "")] -> Right $ a { info = (info a) { port = Just i } }
+                                       [(i, "")] -> Right $ a { ainfo = (ainfo a) { port = Just i } }
                                        _ -> Left "invalid port number"
                                    ) e e
 
-  , flagReq  [ "u", "user" ]       (\v a -> Right $ a { info = (info a) { user = Just v } }) e e
-  , flagReq  [ "D", "db" ]         (\v a -> Right $ a { info = (info a) { dbname = Just v } }) e e
-  , flagNone [ "g", "postgres" ]   (\a -> a { info = (info a) { conntype = PostgresConnType  } }) e
-  , flagNone [ "m", "mysql" ]      (\a -> a { info = (info a) { conntype = MysqlConnType } }) e
-  , flagNone [ "v", "verbose" ]    (\a -> a { verbose = True }) e
-  , flagNone [ "d", "dry-run" ]    (\a -> a { dry = True }) e
-  , flagReq  [ "s", "scripts" ]    (\v a -> Right $ a { scripts = v }) e e
+  , flagReq  [ "u", "user" ]       (\v a -> Right $ a { ainfo = (ainfo a) { user = Just v } }) e e
+  , flagReq  [ "D", "db" ]         (\v a -> Right $ a { ainfo = (ainfo a) { dbname = Just v } }) e e
+  , flagNone [ "g", "postgres" ]   (\a -> a { ainfo = (ainfo a) { conntype = PostgresConnType  } }) e
+  , flagNone [ "m", "mysql" ]      (\a -> a { ainfo = (ainfo a) { conntype = MysqlConnType } }) e
+  , flagNone [ "v", "verbose" ]    (\a -> a { averbose = True }) e
+  , flagNone [ "d", "dry-run" ]    (\a -> a { adry = True }) e
+  , flagReq  [ "s", "scripts" ]    (\v a -> Right $ a { ascripts = v }) e e
   ]
 
-versionflag = (flagArg (\v a -> Right $ a { version = Just v }) "VERSION")
+versionflag = (flagArg (\v a -> Right $ a { aversion = Just v }) "VERSION")
 
 cmdmodes :: String -> Arguments -> Mode Arguments
 cmdmodes cmd initial =
   modes cmd initial "" [
-      mode "migrate" (initial { dbmode = MigrateMode }) "" ignore connectflags
-    , mode "up" (initial { dbmode = UpMode }) "" versionflag connectflags
-    , mode "down" (initial { dbmode = DownMode }) "" versionflag connectflags
-    , mode "apply" (initial { dbmode = ApplyMode }) "" versionflag connectflags
-    , mode "test" (initial { dbmode = TestMode }) "" versionflag connectflags
-    , mode "info" (initial { dbmode = InfoMode }) "" ignore connectflags
-    , mode "help" (initial { dbmode = HelpMode }) "" ignore []
-    , mode "version" (initial { dbmode = VersionMode }) "" ignore []
+      mode "migrate" (initial { adbmode = MigrateMode }) "" ignore connectflags
+    , mode "up" (initial { adbmode = UpMode }) "" versionflag connectflags
+    , mode "down" (initial { adbmode = DownMode }) "" versionflag connectflags
+    , mode "apply" (initial { adbmode = ApplyMode }) "" versionflag connectflags
+    , mode "test" (initial { adbmode = TestMode }) "" versionflag connectflags
+    , mode "info" (initial { adbmode = InfoMode }) "" ignore connectflags
+    , mode "help" (initial { adbmode = HelpMode }) "" ignore []
+    , mode "version" (initial { adbmode = VersionMode }) "" ignore []
     ]
 
 data ConnType =
@@ -105,36 +105,36 @@ data DbMode =
   deriving (Eq, Show)
 
 data Arguments = Arguments {
-    dbmode :: DbMode
-  , dry :: Bool
-  , verbose :: Bool
-  , scripts :: String
-  , info :: MigrateConnectInfo
-  , version :: Maybe String
+    adbmode :: DbMode
+  , adry :: Bool
+  , averbose :: Bool
+  , ascripts :: String
+  , ainfo :: MigrateConnectInfo
+  , aversion :: Maybe String
   } deriving (Eq, Show)
 
 defaultArguments cwd = Arguments {
-    dbmode = HelpMode
-  , dry = False
-  , verbose = False
-  , scripts = cwd </> "migrations"
-  , info = MigrateConnectInfo Nothing Nothing Nothing Nothing Nothing PostgresConnType
-  , version = Nothing
+    adbmode = HelpMode
+  , adry = False
+  , averbose = False
+  , ascripts = cwd </> "migrations"
+  , ainfo = MigrateConnectInfo Nothing Nothing Nothing Nothing Nothing PostgresConnType
+  , aversion = Nothing
   }
 
 defaultMain cmd =
   getCurrentDirectory >>= \cwd -> processArgs ((cmdmodes cmd (defaultArguments cwd)) {modeGroupFlags = toGroup $ globalflags} )>>= run putStrLn
 
 run logger args =
-  case dbmode args of
+  case adbmode args of
     HelpMode -> mapM_ putStrLn usage
     VersionMode -> putStrLn $ "migrate " ++ showVersion Program.version
-    MigrateMode -> buildconnnection (info args)  >>= migratemode logger (scripts args)
-    UpMode -> buildconnnection (info args) >>= upmode
-    DownMode -> buildconnnection (info args) >>= downmode
-    ApplyMode -> buildconnnection (info args) >>= applymode
-    TestMode -> buildconnnection (info args) >>= testmode
-    InfoMode -> buildconnnection (info args) >>= infomode
+    MigrateMode -> buildconnnection (ainfo args)  >>= migratemode logger (ascripts args)
+    UpMode -> buildconnnection (ainfo args) >>= upmode
+    DownMode -> buildconnnection (ainfo args) >>= downmode
+    ApplyMode -> buildconnnection (ainfo args) >>= applymode
+    TestMode -> buildconnnection (ainfo args) >>= testmode
+    InfoMode -> buildconnnection (ainfo args) >>= infomode
 
 bomb failwith =
   putStrLn failwith >> exitFailure
@@ -153,7 +153,7 @@ buildconnnection ci =
 
 
 
-migratemode :: MigrateDatabase IO a => M a ()
+migratemode :: MigrateDatabase IO a => l -> s -> a -> IO ()
 migratemode = undefined
 
 upmode :: MigrateDatabase IO a => a -> IO ()

@@ -22,10 +22,40 @@ instance ToField MigrationId where
   toField (MigrationId m) = toField m
 
 instance MigrateDatabase IO Connection where
-  testconn c =  query_ c "SELECT TRUE" >>= \r -> return $ maybe False fromOnly (listToMaybe r)
-  initialize c = void $ execute_ c "CREATE TABLE IF NOT EXISTS MIGRATION_INFO (MIGRATION VARCHAR(50) PRIMARY KEY)"
-  initialized c = query_ c "SELECT TRUE FROM pg_tables WHERE schemaname='public' AND tablename = MIGRATION_INFO" >>= \r -> return $ maybe False fromOnly (listToMaybe r)
-  runMigrations = runall
+  testconn = testconn'
+  initialize = initialize'
+  initialized = initialized'
+  runMigration = runMigration'
+  getMigrations = getMigrations'
+  tx = tx'
+
+
+testconn' :: MM c m Bool
+testconn' = undefined
+
+initialize' :: MM c m ()
+initialize' = undefined
+
+initialized' :: MM c m Bool
+initialized' = undefined
+
+runMigration' :: Migration -> MM c m ()
+runMigration' = undefined
+
+getMigrations' :: MM c m [MigrationId]
+getMigrations' = undefined
+
+tx' :: MM c m () -> MM c m Bool
+tx' = undefined
+
+
+
+{-
+  testconn =  connection >>= \c ->  query_ c "SELECT TRUE" >>= \r -> return $ maybe False fromOnly (listToMaybe r)
+
+  initialize = connection >>= \c -> void $ execute_ c "CREATE TABLE IF NOT EXISTS MIGRATION_INFO (MIGRATION VARCHAR(50) PRIMARY KEY)"
+  initialized = connection >>= \c -> query_ c "SELECT TRUE FROM pg_tables WHERE schemaname='public' AND tablename = MIGRATION_INFO" >>= \r -> return $ maybe False fromOnly (listToMaybe r)
+  runMigration = runall
   getMigrations c = fmap (fmap fromOnly) (query_ c "SELECT MIGRATION FROM MIGRATION_INFO")
 
 
@@ -64,3 +94,4 @@ saferun c f m = EitherT $ handle (\e -> return (Left (pack . show $ (e :: SomeEx
 
 run :: Connection -> (Migration -> Ddl) -> Migration -> IO MigrationId
 run c f m = execute_ c (fromString . unpack $ f m) >> record c (migration m) >> return (migration m)
+-}
