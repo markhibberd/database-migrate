@@ -145,4 +145,3 @@ readFile' p = withFile p ReadMode hGetContents
 
 hGetContents' :: Handle -> IO String
 hGetContents' h = hGetContents h >>= \s -> length s `seq` return s
-

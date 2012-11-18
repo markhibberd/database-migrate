@@ -129,7 +129,7 @@ run logger args =
   case adbmode args of
     HelpMode -> mapM_ putStrLn usage
     VersionMode -> putStrLn $ "migrate " ++ showVersion Program.version
-    MigrateMode -> buildconnnection (ainfo args)  >>= migratemode logger (ascripts args)
+    MigrateMode -> buildconnnection (ainfo args)  >>= \c -> migratemode logger (ascripts args) c
     UpMode -> buildconnnection (ainfo args) >>= upmode
     DownMode -> buildconnnection (ainfo args) >>= downmode
     ApplyMode -> buildconnnection (ainfo args) >>= applymode
@@ -148,10 +148,8 @@ buildconnnection ci =
         , PG.connectUser = fromMaybe (PG.connectUser PG.defaultConnectInfo) (user ci)
         , PG.connectPassword = fromMaybe (PG.connectPassword PG.defaultConnectInfo) (password ci)
         , PG.connectDatabase = fromMaybe (PG.connectDatabase PG.defaultConnectInfo) (dbname ci)
-        }) >>= \conn -> testconn conn >>= \ok -> if ok then return conn else bomb ("could not connect to database with: " ++ show ci)
+        })
     MysqlConnType -> error "not implemented"
-
-
 
 migratemode :: MigrateDatabase IO a => l -> s -> a -> IO ()
 migratemode = undefined
@@ -170,4 +168,3 @@ testmode connection = undefined
 
 infomode :: MigrateDatabase IO a => a -> IO ()
 infomode connection = undefined
-

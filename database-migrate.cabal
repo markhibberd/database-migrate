@@ -51,6 +51,7 @@ Library
                     Database.Migrate
                     Database.Migrate.Main
                     Database.Migrate.Core
+                    Database.Migrate.Kernel
                     Database.Migrate.PostgreSQL
 
   Extensions:
