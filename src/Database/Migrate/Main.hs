@@ -14,8 +14,10 @@ import qualified Data.Text as T
 import Data.Maybe
 import Data.Version (showVersion)
 
-import Database.Migrate.Core
-import Database.Migrate.PostgreSQL ()
+import Database.Migrate.Data
+import Database.Migrate.Kernel
+import Database.Migrate.Loader
+import Database.Migrate.PostgreSQL
 
 import qualified Database.PostgreSQL.Simple as PG
 
@@ -23,6 +25,8 @@ import System.Console.CmdArgs.Explicit
 import System.Directory
 import System.FilePath
 import System.Exit
+import System.Environment (getArgs)
+import System.IO
 
 ignore :: Arg Arguments
 ignore = flagArg (\_ a -> Right a) ""
@@ -31,9 +35,10 @@ e :: String
 e = ""
 
 usage = [
-    "usage: db [-v|--verbose] [-d|--dry-run] [-t|--test-run] [-a|--auto] [-s|--scripts DIR]"
-  , "               [-h|--host HOSTNAME] [-p|--port PORTNUMBER] [-u|--user USER]"
-  , "               [-P|--password PASSWORD] [-D|--db DATABASE] [-g|--postgres] [-m|--mysql] [VERSION]"
+    "usage: db migrate [-v|--verbose] [-d|--dry-run]"
+  , "       db up [-v|--verbose] [-d|--dry-run]"
+  , "       db down [-v|--verbose] [-d|--dry-run]"
+  , "       db apply [-v|--verbose] [-d|--dry-run]"
   , "       db -h|--help"
   , "       db -V|--version"
   ]
@@ -47,21 +52,8 @@ globalflags = [
 
 connectflags :: [Flag Arguments]
 connectflags = [
-    flagReq  [ "H", "hostname" ]   (\v a -> Right $ a { ainfo = (ainfo a) { hostname = Just v } }) e e
-  , flagReq  [ "P", "password" ]   (\v a -> Right $ a { ainfo = (ainfo a) { password = Just v } }) e e
-  , flagReq  [ "p", "port" ]       (\v a ->
-                                     case reads v of
-                                       [(i, "")] -> Right $ a { ainfo = (ainfo a) { port = Just i } }
-                                       _ -> Left "invalid port number"
-                                   ) e e
-
-  , flagReq  [ "u", "user" ]       (\v a -> Right $ a { ainfo = (ainfo a) { user = Just v } }) e e
-  , flagReq  [ "D", "db" ]         (\v a -> Right $ a { ainfo = (ainfo a) { dbname = Just v } }) e e
-  , flagNone [ "g", "postgres" ]   (\a -> a { ainfo = (ainfo a) { conntype = PostgresConnType  } }) e
-  , flagNone [ "m", "mysql" ]      (\a -> a { ainfo = (ainfo a) { conntype = MysqlConnType } }) e
-  , flagNone [ "v", "verbose" ]    (\a -> a { averbose = True }) e
+    flagNone [ "v", "verbose" ]    (\a -> a { averbose = True }) e
   , flagNone [ "d", "dry-run" ]    (\a -> a { adry = True }) e
-  , flagReq  [ "s", "scripts" ]    (\v a -> Right $ a { ascripts = v }) e e
   ]
 
 versionflag = (flagArg (\v a -> Right $ a { aversion = Just v }) "VERSION")
@@ -73,25 +65,9 @@ cmdmodes cmd initial =
     , mode "up" (initial { adbmode = UpMode }) "" versionflag connectflags
     , mode "down" (initial { adbmode = DownMode }) "" versionflag connectflags
     , mode "apply" (initial { adbmode = ApplyMode }) "" versionflag connectflags
-    , mode "test" (initial { adbmode = TestMode }) "" versionflag connectflags
-    , mode "info" (initial { adbmode = InfoMode }) "" ignore connectflags
     , mode "help" (initial { adbmode = HelpMode }) "" ignore []
     , mode "version" (initial { adbmode = VersionMode }) "" ignore []
     ]
-
-data ConnType =
-    PostgresConnType
-  | MysqlConnType
-  deriving (Eq, Show)
-
-data MigrateConnectInfo = MigrateConnectInfo {
-    hostname :: Maybe String
-  , password :: Maybe String
-  , port :: Maybe Int
-  , user :: Maybe String
-  , dbname :: Maybe String
-  , conntype :: ConnType
-  } deriving (Eq, Show)
 
 data DbMode =
     HelpMode
@@ -100,8 +76,6 @@ data DbMode =
   | UpMode
   | DownMode
   | ApplyMode
-  | TestMode
-  | InfoMode
   deriving (Eq, Show)
 
 data Arguments = Arguments {
@@ -109,7 +83,6 @@ data Arguments = Arguments {
   , adry :: Bool
   , averbose :: Bool
   , ascripts :: String
-  , ainfo :: MigrateConnectInfo
   , aversion :: Maybe String
   } deriving (Eq, Show)
 
@@ -118,53 +91,38 @@ defaultArguments cwd = Arguments {
   , adry = False
   , averbose = False
   , ascripts = cwd </> "migrations"
-  , ainfo = MigrateConnectInfo Nothing Nothing Nothing Nothing Nothing PostgresConnType
   , aversion = Nothing
   }
 
-defaultMain cmd =
-  getCurrentDirectory >>= \cwd -> processArgs ((cmdmodes cmd (defaultArguments cwd)) {modeGroupFlags = toGroup $ globalflags} )>>= run putStrLn
+defaultMain :: Migrations -> MigrateDatabase IO c -> IO c -> IO ()
+defaultMain migrationstore db connector = getArgs >>= defaultMain' migrationstore db connector
 
-run logger args =
-  case adbmode args of
+defaultMain' :: Migrations -> MigrateDatabase IO c -> IO c -> [String] -> IO ()
+defaultMain' migrationstore db connector args =
+  getCurrentDirectory >>= \cwd ->
+    case process ((cmdmodes "migrate" (defaultArguments cwd)) {modeGroupFlags = toGroup $ globalflags} ) args of
+      Left x ->  hPutStrLn stderr x >> exitFailure
+      Right x -> run migrationstore db connector x
+
+run :: Migrations -> MigrateDatabase IO c -> IO c -> Arguments -> IO ()
+run migrationstore db' connector args =
+  let db = if adry args then dryrun db' else db'
+  in case adbmode args of
     HelpMode -> mapM_ putStrLn usage
     VersionMode -> putStrLn $ "migrate " ++ showVersion Program.version
-    MigrateMode -> buildconnnection (ainfo args)  >>= \c -> migratemode logger (ascripts args) c
-    UpMode -> buildconnnection (ainfo args) >>= upmode
-    DownMode -> buildconnnection (ainfo args) >>= downmode
-    ApplyMode -> buildconnnection (ainfo args) >>= applymode
-    TestMode -> buildconnnection (ainfo args) >>= testmode
-    InfoMode -> buildconnnection (ainfo args) >>= infomode
+    MigrateMode -> connector  >>= \c -> (executeMigrate migrationstore c $ migrate db) >>= print
+    UpMode -> connector >>= \c -> (executeMigrate migrationstore c $ upmode db) >>= print
+    DownMode -> connector >>= \c -> (executeMigrate migrationstore c $ downmode db) >>= print
+    ApplyMode -> connector >>= \c -> (executeMigrate migrationstore c $ applymode db) >>= print
 
 bomb failwith =
   putStrLn failwith >> exitFailure
 
-buildconnnection ci =
-  case conntype ci of
-    PostgresConnType ->
-      PG.connect (PG.defaultConnectInfo {
-          PG.connectHost = fromMaybe (PG.connectHost PG.defaultConnectInfo) (hostname ci)
-        , PG.connectPort = maybe (PG.connectPort PG.defaultConnectInfo) (fromIntegral)  (port ci)
-        , PG.connectUser = fromMaybe (PG.connectUser PG.defaultConnectInfo) (user ci)
-        , PG.connectPassword = fromMaybe (PG.connectPassword PG.defaultConnectInfo) (password ci)
-        , PG.connectDatabase = fromMaybe (PG.connectDatabase PG.defaultConnectInfo) (dbname ci)
-        })
-    MysqlConnType -> error "not implemented"
+upmode :: MigrateDatabase m c -> Migrate c m ()
+upmode = undefined
 
-migratemode :: MigrateDatabase IO a => l -> s -> a -> IO ()
-migratemode = undefined
+downmode :: MigrateDatabase m c -> Migrate c m ()
+downmode = undefined
 
-upmode :: MigrateDatabase IO a => a -> IO ()
-upmode connection = undefined
-
-downmode :: MigrateDatabase IO a => a -> IO ()
-downmode connection = undefined
-
-applymode :: MigrateDatabase IO a => a -> IO ()
-applymode connection = undefined
-
-testmode :: MigrateDatabase IO a => a -> IO ()
-testmode connection = undefined
-
-infomode :: MigrateDatabase IO a => a -> IO ()
-infomode connection = undefined
+applymode :: MigrateDatabase m c -> Migrate c m ()
+applymode = undefined

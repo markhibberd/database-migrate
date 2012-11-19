@@ -49,11 +49,8 @@ Library
 
   Exposed-Modules:
                     Database.Migrate
-                    Database.Migrate.Main
-                    Database.Migrate.Core
+                    Database.Migrate.Data
                     Database.Migrate.Kernel
+                    Database.Migrate.Loader
+                    Database.Migrate.Main
                     Database.Migrate.PostgreSQL
-
-  Extensions:
-                    MultiParamTypeClasses
-                    OverloadedStrings

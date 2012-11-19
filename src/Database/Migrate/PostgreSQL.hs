@@ -1,10 +1,12 @@
 {-#LANGUAGE OverloadedStrings #-}
 module Database.Migrate.PostgreSQL where
 
+import Database.Migrate.Data
+import Database.Migrate.Kernel
+
 import Control.Exception (SomeException(..), handle)
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Trans.Either
 
 import Data.Maybe
 import Data.Text hiding (filter, reverse, find, null)
@@ -13,7 +15,6 @@ import Data.String (IsString(..))
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
-import Database.Migrate.Core
 
 instance FromField MigrationId where
   fromField f m = fmap MigrationId $ fromField f m
@@ -21,34 +22,26 @@ instance FromField MigrationId where
 instance ToField MigrationId where
   toField (MigrationId m) = toField m
 
-instance MigrateDatabase IO Connection where
-  testconn = testconn'
-  initialize = initialize'
-  initialized = initialized'
-  runMigration = runMigration'
-  getMigrations = getMigrations'
-  tx = tx'
+data PsqlConnectInfo = PsqlConnectInfo
 
-
-testconn' :: MM c m Bool
-testconn' = undefined
-
-initialize' :: MM c m ()
-initialize' = undefined
-
-initialized' :: MM c m Bool
-initialized' = undefined
-
-runMigration' :: Migration -> MM c m ()
-runMigration' = undefined
-
-getMigrations' :: MM c m [MigrationId]
-getMigrations' = undefined
-
-tx' :: MM c m () -> MM c m Bool
-tx' = undefined
-
-
+psqlMigrateDatabase :: MigrateDatabase IO Connection
+psqlMigrateDatabase =
+  MigrateDatabase {
+    current = connection >>= \c ->
+     liftIO (query_ c "SELECT TRUE FROM pg_tables WHERE schemaname='public' AND tablename = 'MIGRATION_INFO'") >>= \r ->
+      return (maybe False fromOnly (listToMaybe r)) >>= \rr ->
+      if rr
+        then liftIO (fmap Initialized (fmap (fmap fromOnly) (query_ c "SELECT MIGRATION FROM MIGRATION_INFO")))
+        else return NotInitialized
+  , initialize = connection >>= \c -> liftIO . void $
+      execute_ c "CREATE TABLE IF NOT EXISTS MIGRATION_INFO (MIGRATION VARCHAR(50) PRIMARY KEY)"
+  , runSql = \sql -> connection >>= \c ->
+     liftIO . void $ execute_ c (fromString . unpack $ sql)
+  , recordInstall = \m -> connection >>= \c ->
+     liftIO . void $ execute c "INSERT INTO MIGRATION_INFO (MIGRATION) VALUES (?)" (Only $ migrationId m)
+  , recordRollback = \m -> connection >>= \c ->
+     liftIO . void $ execute c "DELETE FROM MIGRATION_INFO WHERE MIGRATION = ?" (Only $ migrationId m)
+  }
 
 {-
   testconn =  connection >>= \c ->  query_ c "SELECT TRUE" >>= \r -> return $ maybe False fromOnly (listToMaybe r)

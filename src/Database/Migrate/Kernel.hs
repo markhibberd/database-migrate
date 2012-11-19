@@ -1,61 +1,52 @@
-{-# LANGUAGE RankNTypes #-}
+{-#LANGUAGE RankNTypes, ScopedTypeVariables #-}
 module Database.Migrate.Kernel where
 
+import Database.Migrate.Data
+
 import Control.Monad
-import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
-import Control.Monad.Trans.Either
+import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Writer
-import Control.Monad.Trans.Maybe
 
-import Data.Text hiding (foldr, filter, reverse, length)
+import qualified Data.Set as S
+import Data.Functor
 
-data ConnectionInfo m c =
-  ConnectionInfo { getConnectionInfo :: m c }
+mlog :: Monad m => MigrationLog -> Migrate c m ()
+mlog l = Migrate . lift . lift $ tell [l]
 
-data MigrationId =
-  MigrationId Text
+connection :: (Functor m, Monad m) => Migrate c m c
+connection = Migrate $ fmap snd ask
 
-data MigrationLog =
-    MigrationApplied Migration
-  | MigrationFailed Migration String
-  | MigrationRolledback Migration String
+store :: (Functor m, Monad m) => Migrate c m Migrations
+store = Migrate $ fmap fst ask
 
-data Migration =
-  Migration MigrationId Text Text
-
-data MigrationRecords =
-    NotInitialized
-  | Initialized [MigrationId]
-
--- FIX should not be a list, want to index and sort migrations
-data Migrations =
-  Migrations [Migration]
-
-data Migrate c m a =
-  Migrate { runMigrate :: ReaderT (Migrations, c) (WriterT [MigrationLog] (MaybeT m)) a }
-
--- FIX consider mandating history
--- FIX add reverse engineer to extract current schema
-data MigrateDatabase m c =
-  MigrateDatbase {
-      execute :: forall a. ConnectionInfo m c -> Migrate c m a -> m ([MigrationLog], Maybe a)
-    , current :: Migrate c m MigrationRecords
-    , initialize :: Migrate c m ()
+dryrun :: Monad m => MigrateDatabase m c -> MigrateDatabase m c
+dryrun db =
+  MigrateDatabase {
+      current = current db
+    , initialize = return ()
+    , runSql = \_ -> return ()
+    , recordInstall = \_ -> return ()
+    , recordRollback = \_ -> return ()
     }
 
-instance Monad f => Functor (Migrate c f) where
-  fmap f a = a >>= \a' -> return (f a')
+migrate :: (Functor m, Monad m) => MigrateDatabase m c -> Migrate c m ()
+migrate db =
+  do records <- current db
+     ms <- store
+     migrations <- case records of
+       NotInitialized -> getMigrations ms <$ (mlog DatabaseInitialized >> initialize db)
+       Initialized mids -> return $ missing ms mids
+     forM_ migrations (\m -> mlog (MigrationApplied m) >> (runSql db $ up m))
 
-instance Monad m => Monad (Migrate c m) where
-  return a = Migrate $ return a
-  m >>= f = Migrate $ do
-    a <- runMigrate m
-    runMigrate (f a)
+missing :: Migrations -> [MigrationId] -> [Migration]
+missing ms applied =
+  let migrations = getMigrations ms
+      available = foldr (S.insert . migrationId) S.empty migrations
+      installed = S.fromList applied
+      torun = S.difference available installed
+   in filter (\m -> S.member (migrationId m) torun) migrations
 
-migrate :: (Functor m, Monad m) => ConnectionInfo m c -> MigrateDatabase m c -> Migrations -> m ([MigrationLog], Bool)
-migrate ci db ms =
-  do c <- getConnectionInfo ci
-     _ <- runMaybeT $ fmap fst (runWriterT $ runReaderT (runMigrate $ current db) (ms, c))
-     return ([], True)
+executeMigrate :: Monad m => Migrations -> c -> Migrate c m a -> m (Maybe a, [MigrationLog])
+executeMigrate = \ms c m -> runWriterT (runMaybeT (runReaderT (runMigrate m) (ms, c)))

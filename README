@@ -1,2 +1,12 @@
 Haskell database migrations.
 
+helpful:
+
+$ createuser             # interactive, role=checkmate, superuser=n, create databases=n, create roles=n
+    $ createdb checkmate
+    $ psql checkmate
+    checkmate=# alter user checkmate with encrypted password 'checkmate';
+    checkmate=# grant all privileges on database checkmate to checkmate;
+
+createuser -S -R -D -E -P testa
+echo "grant all privileges on database testa to testa"

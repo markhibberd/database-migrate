@@ -1,7 +1,5 @@
 :set -isrc -idist/build/autogen
 :set -Wall -XMultiParamTypeClasses -fno-warn-orphans
-:l Database.Migrate.Kernel
-:m + Database.Migrate.Kernel
+:l Database.Migrate
+:m + Database.Migrate
 :set prompt ">> "
-
-
