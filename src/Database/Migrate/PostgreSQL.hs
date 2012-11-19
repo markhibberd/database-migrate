@@ -38,9 +38,9 @@ psqlMigrateDatabase =
   , runSql = \sql -> connection >>= \c ->
      liftIO . void $ execute_ c (fromString . unpack $ sql)
   , recordInstall = \m -> connection >>= \c ->
-     liftIO . void $ execute c "INSERT INTO MIGRATION_INFO (MIGRATION) VALUES (?)" (Only $ migrationId m)
+     liftIO . void $ (begin c >> execute c "INSERT INTO MIGRATION_INFO (MIGRATION) VALUES (?)" (Only $ migrationId m) >> commit c)
   , recordRollback = \m -> connection >>= \c ->
-     liftIO . void $ execute c "DELETE FROM MIGRATION_INFO WHERE MIGRATION = ?" (Only $ migrationId m)
+     liftIO . void $ (begin c >> execute c "DELETE FROM MIGRATION_INFO WHERE MIGRATION = ?" (Only $ migrationId m) >> commit c)
   }
 
 {-

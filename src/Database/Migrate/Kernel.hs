@@ -38,7 +38,7 @@ migrate db =
      migrations <- case records of
        NotInitialized -> getMigrations ms <$ (mlog DatabaseInitialized >> initialize db)
        Initialized mids -> return $ missing ms mids
-     forM_ migrations (\m -> mlog (MigrationApplied m) >> (runSql db $ up m))
+     forM_ migrations (\m -> mlog (MigrationApplied m) >> (runSql db (up m) >> recordInstall db m))
 
 missing :: Migrations -> [MigrationId] -> [Migration]
 missing ms applied =

@@ -1,12 +1,11 @@
 Haskell database migrations.
 
-helpful:
+For demo:
 
-$ createuser             # interactive, role=checkmate, superuser=n, create databases=n, create roles=n
-    $ createdb checkmate
-    $ psql checkmate
-    checkmate=# alter user checkmate with encrypted password 'checkmate';
-    checkmate=# grant all privileges on database checkmate to checkmate;
+    $ createdb testa
+    $ createuser -S -R -D -E -P testa
+    $ echo "grant all privileges on database testa to testa" | psql testa
 
-createuser -S -R -D -E -P testa
-echo "grant all privileges on database testa to testa"
+To drop and recreate
+
+    $ dropdb testa; createdb testa && echo "grant all privileges on database testa to testa" | psql testa
