@@ -1,5 +1,5 @@
 Name:               database-migrate
-Version:            0.1.1
+Version:            0.1.2
 License:            BSD3
 License-File:       LICENSE
 Author:             Mark Hibberd <mark@hibberd.id.au>
@@ -35,7 +35,7 @@ Library
                     , filepath                      >= 1.0
                     , bytestring                    >= 0.9
                     , time                          >= 1.0
-                    , postgresql-simple             == 0.1.4.3
+                    , postgresql-simple             >= 0.1.4.3
                     , containers                    >= 0.4
                     , either                        >= 3.0.2
                     , transformers                  >= 0.2
