@@ -45,7 +45,7 @@ Library
                     -Wall -fno-warn-orphans
 
   Hs-Source-Dirs:
-                    src dist/build/autogen
+                    src
 
   Exposed-Modules:
                     Database.Migrate
