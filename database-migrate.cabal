@@ -1,5 +1,5 @@
 Name:               database-migrate
-Version:            0.1.0
+Version:            0.1.1
 License:            BSD3
 License-File:       LICENSE
 Author:             Mark Hibberd <mark@hibberd.id.au>
@@ -45,7 +45,7 @@ Library
                     -Wall -fno-warn-orphans
 
   Hs-Source-Dirs:
-                    src
+                    src dist/build/autogen
 
   Exposed-Modules:
                     Database.Migrate

@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module Database.Migrate.Main (defaultMain, defaultMain') where
 
-import qualified Paths_database_migrate as Program (version)
+--import qualified Paths_database_migrate as Program (version)
 
 import Control.Monad
 import Control.Monad.Trans.Either
@@ -12,7 +12,7 @@ import Control.Monad.Trans.Maybe
 
 import qualified Data.Text as T
 import Data.Maybe
-import Data.Version (showVersion)
+--import Data.Version (showVersion)
 
 import Database.Migrate.Data
 import Database.Migrate.Kernel
@@ -109,7 +109,7 @@ run migrationstore db' connector args =
   let db = if adry args then dryrun db' else db'
   in case adbmode args of
     HelpMode -> mapM_ putStrLn usage
-    VersionMode -> putStrLn $ "migrate " ++ showVersion Program.version
+    VersionMode -> putStrLn $ "migrate 0.1.1" -- ++ showVersion Program.version
     MigrateMode -> connector  >>= \c -> (executeMigrate migrationstore c $ migrate db) >>= print
     UpMode -> connector >>= \c -> (executeMigrate migrationstore c $ upmode db) >>= print
     DownMode -> connector >>= \c -> (executeMigrate migrationstore c $ downmode db) >>= print
