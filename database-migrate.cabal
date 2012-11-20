@@ -1,5 +1,5 @@
 Name:               database-migrate
-Version:            0.0.3
+Version:            0.1.0
 License:            BSD3
 License-File:       LICENSE
 Author:             Mark Hibberd <mark@hibberd.id.au>
@@ -29,17 +29,17 @@ Flag                small_base
 
 Library
   Build-Depends:
-                    base                            >= 3          && < 5
-                    , text                          >= 0.11       && < 0.12
-                    , directory                     >= 1.0        && < 2.0
-                    , filepath                      >= 1.0        && < 2.0
-                    , bytestring                    >= 0.9        && < 0.10
-                    , time                          >= 1.0        && < 2.0
+                    base                            >= 3          
+                    , text                          >= 0.11      
+                    , directory                     >= 1.0      
+                    , filepath                      >= 1.0     
+                    , bytestring                    >= 0.9    
+                    , time                          >= 1.0   
                     , postgresql-simple             == 0.1.4.3
-                    , containers                    >= 0.4        && < 0.5
-                    , either                        >= 3.0.2      && < 4.0
-                    , transformers                  >= 0.2        && < 0.4
-                    , cmdargs                       >= 0.9.3      && < 1.0.0
+                    , containers                    >= 0.4  
+                    , either                        >= 3.0.2
+                    , transformers                  >= 0.2 
+                    , cmdargs                       >= 0.9.3 
 
   GHC-Options:
                     -Wall -fno-warn-orphans

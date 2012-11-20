@@ -28,19 +28,19 @@ psqlMigrateDatabase :: MigrateDatabase IO Connection
 psqlMigrateDatabase =
   MigrateDatabase {
     current = connection >>= \c ->
-     liftIO (query_ c "SELECT TRUE FROM pg_tables WHERE schemaname='public' AND tablename = 'MIGRATION_INFO'") >>= \r ->
+     liftIO (query_ c "SELECT TRUE FROM pg_tables WHERE schemaname='public' AND tablename = 'migration_info'") >>= \r ->
       return (maybe False fromOnly (listToMaybe r)) >>= \rr ->
       if rr
-        then liftIO (fmap Initialized (fmap (fmap fromOnly) (query_ c "SELECT MIGRATION FROM MIGRATION_INFO")))
+        then liftIO (fmap Initialized (fmap (fmap fromOnly) (query_ c "SELECT migration FROM migration_info")))
         else return NotInitialized
   , initialize = connection >>= \c -> liftIO . void $
-      execute_ c "CREATE TABLE IF NOT EXISTS MIGRATION_INFO (MIGRATION VARCHAR(50) PRIMARY KEY)"
+      execute_ c "CREATE TABLE IF NOT EXISTS migration_info (migration VARCHAR(50) PRIMARY KEY)"
   , runSql = \sql -> connection >>= \c ->
      liftIO . void $ execute_ c (fromString . unpack $ sql)
   , recordInstall = \m -> connection >>= \c ->
-     liftIO . void $ (begin c >> execute c "INSERT INTO MIGRATION_INFO (MIGRATION) VALUES (?)" (Only $ migrationId m) >> commit c)
+     liftIO . void $ (begin c >> execute c "INSERT INTO migration_info (migration) VALUES (?)" (Only $ migrationId m) >> commit c)
   , recordRollback = \m -> connection >>= \c ->
-     liftIO . void $ (begin c >> execute c "DELETE FROM MIGRATION_INFO WHERE MIGRATION = ?" (Only $ migrationId m) >> commit c)
+     liftIO . void $ (begin c >> execute c "DELETE FROM migration_info WHERE migration = ?" (Only $ migrationId m) >> commit c)
   }
 
 {-

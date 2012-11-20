@@ -14,6 +14,7 @@ createConnection = P.connect $ P.defaultConnectInfo { P.connectUser = "testa", P
 runDemo :: [String] -> IO ()
 runDemo args =
   do ems <- runEitherT $ find "migrations"
+     c <- createConnection
      case ems of
        Left e -> putStrLn e
-       Right ms -> defaultMain' ms psqlMigrateDatabase createConnection args
+       Right ms -> defaultMain' ms psqlMigrateDatabase (return c) args >> P.close c
