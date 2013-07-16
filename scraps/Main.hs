@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module Database.Migrate.Main (defaultMain, defaultMain') where
 
---import qualified Paths_database_migrate as Program (version)
+import qualified Paths_database_migrate as Program (version)
 
 import Control.Monad
 import Control.Monad.Trans.Either

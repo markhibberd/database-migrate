@@ -1,90 +1,84 @@
-{-#LANGUAGE OverloadedStrings #-}
-module Database.Migrate.PostgreSQL where
+{-# LANGUAGE OverloadedStrings, LiberalTypeSynonyms #-}
+module Database.Migrate.PostgreSQL (
+  psqlMain
+) where
 
-import Database.Migrate.Data
-import Database.Migrate.Kernel
 
-import Control.Exception (SomeException(..), handle)
-import Control.Monad
+import Control.Lens                    ((^.), to)
+import Control.Monad                   (void)
+import Control.Monad.Trans.Reader
 import Control.Monad.IO.Class
 
-import Data.Maybe
-import Data.Text hiding (filter, reverse, find, null)
 import Data.String (IsString(..))
+import Data.Text                       hiding (length)
+import Data.Time
 
 import Database.PostgreSQL.Simple
-import Database.PostgreSQL.Simple.FromField
-import Database.PostgreSQL.Simple.ToField
+import Database.Migrate.Migration
 
-instance FromField MigrationId where
-  fromField f m = fmap MigrationId $ fromField f m
+import System.IO
 
-instance ToField MigrationId where
-  toField (MigrationId m) = toField m
+type DbName = Text
+type Db a = ReaderT Connection IO a
 
-data PsqlConnectInfo = PsqlConnectInfo
+psqlMain :: IO ()
+psqlMain = putStrLn "hello"
 
-psqlMigrateDatabase :: MigrateDatabase IO Connection
-psqlMigrateDatabase =
-  MigrateDatabase {
-    current = connection >>= \c ->
-     liftIO (query_ c "SELECT TRUE FROM pg_tables WHERE schemaname='public' AND tablename = 'migration_info'") >>= \r ->
-      return (maybe False fromOnly (listToMaybe r)) >>= \rr ->
-      if rr
-        then liftIO (fmap Initialized (fmap (fmap fromOnly) (query_ c "SELECT migration FROM migration_info")))
-        else return NotInitialized
-  , initialize = connection >>= \c -> liftIO . void $
-      execute_ c "CREATE TABLE IF NOT EXISTS migration_info (migration VARCHAR(50) PRIMARY KEY)"
-  , runSql = \sql -> connection >>= \c ->
-     liftIO . void $ execute_ c (fromString . unpack $ sql)
-  , recordInstall = \m -> connection >>= \c ->
-     liftIO . void $ (begin c >> execute c "INSERT INTO migration_info (migration) VALUES (?)" (Only $ migrationId m) >> commit c)
-  , recordRollback = \m -> connection >>= \c ->
-     liftIO . void $ (begin c >> execute c "DELETE FROM migration_info WHERE migration = ?" (Only $ migrationId m) >> commit c)
-  }
+history :: Query
+history =
+  "CREATE TABLE IF NOT EXISTS migration_history (db VARCHAR(50), migration VARCHAR(50), action CHARACTER VARYING(20), at BIGINT, sql TEXT)"
+versions :: Query
+versions =
+  "CREATE TABLE IF NOT EXISTS migration_versions (db VARCHAR(50), migration VARCHAR(50) PRIMARY KEY)"
 
-{-
-  testconn =  connection >>= \c ->  query_ c "SELECT TRUE" >>= \r -> return $ maybe False fromOnly (listToMaybe r)
+install :: Query
+install =
+  "INSERT INTO migration_versions (db, migration) VALUES (?, ?)"
 
-  initialize = connection >>= \c -> void $ execute_ c "CREATE TABLE IF NOT EXISTS MIGRATION_INFO (MIGRATION VARCHAR(50) PRIMARY KEY)"
-  initialized = connection >>= \c -> query_ c "SELECT TRUE FROM pg_tables WHERE schemaname='public' AND tablename = MIGRATION_INFO" >>= \r -> return $ maybe False fromOnly (listToMaybe r)
-  runMigration = runall
-  getMigrations c = fmap (fmap fromOnly) (query_ c "SELECT MIGRATION FROM MIGRATION_INFO")
+uninstall :: Query
+uninstall =
+  "DELETE FROM migration_versions (db, migration) WHERE db = ? AND migration = ?"
 
+addhistory :: Query
+addhistory =
+  "INSERT INTO migration_history (db, migration, action, at, sql) VALUES (?, ?, ?, ?, ?)"
 
-migratePostgres :: Connection -> FilePath -> (String -> IO ()) -> IO () -> IO ()
-migratePostgres c path logger bomb = do
-   initialize c
-   ems <- runEitherT $ find path
-   case ems of
-     Left e -> logger e >> bomb
-     Right ms -> runEitherT (latest c ms) >>= \er ->
-       case er of
-         Left (Context s f m r) ->
-           forM_ s (\mid -> logger ("migration:applied: " ++ (unpack . extract $ mid))) >>
-           logger ("migration:failed:" ++ (unpack . extract $ f) ++ ":" ++ unpack m) >>
-           logger ("migration:rolledback:" ++ show r) >>
-           bomb
-         Right mids -> if null mids
-                         then logger "migration:up-to-date"
-                         else forM_ mids $ \mid -> logger $ "migration:applied: " ++ (unpack . extract $ mid)
+up :: DbName -> Migration -> Db ()
+up n =
+  change n "up" _upChange
 
-record :: Connection -> MigrationId -> IO ()
-record conn mid = void $ execute conn "INSERT INTO MIGRATION_INFO VALUES (?)" (Only mid)
+down :: DbName -> Migration -> Db ()
+down n =
+  change n "down" _downChange
 
-runall :: Connection -> (Migration -> Ddl) -> [Migration] -> MigrationResultT IO [MigrationId]
-runall c f ms =
-  liftIO (begin c) >>
-    foldM (\rs m ->
-             EitherT $
-               do e <- runEitherT (saferun c f m)
-                  case e of
-                    Left emsg -> rollback c >> (return . Left $ Context (reverse rs) (migration m) emsg True)
-                    Right r -> return . Right $ r:rs) [] ms >>= \result -> liftIO (commit c) >> return (reverse result)
+change :: DbName -> Text -> (Migration -> Change) -> Migration -> Db ()
+change n mode getChange m = do
+  t <- now
+  change <- liftIO . raw . getChange $ m
+  run addhistory (n, m^.migrationId, mode, t, change)
+  run install (n, m^.migrationId)
+  run_ . mkquery $ change
 
-saferun :: Connection -> (Migration -> Ddl) -> Migration -> EitherT Text IO MigrationId
-saferun c f m = EitherT $ handle (\e -> return (Left (pack . show $ (e :: SomeException)))) (fmap Right $ run c f m)
+run :: ToRow a => Query -> a -> Db ()
+run q a = ask >>= \c -> liftIO . void $ execute c q a
 
-run :: Connection -> (Migration -> Ddl) -> Migration -> IO MigrationId
-run c f m = execute_ c (fromString . unpack $ f m) >> record c (migration m) >> return (migration m)
--}
+run_ :: Query -> Db ()
+run_ q = ask >>= \c -> liftIO . void $ execute_ c q
+
+now :: Db UTCTime
+now = liftIO getCurrentTime
+
+mkquery :: Text -> Query
+mkquery = fromString . unpack
+
+raw :: Change -> IO Text
+raw (Ddl q) = return q
+raw (DdlFile q) = readFile q >>= return . pack
+raw (Dud msg) = error . unpack $ msg -- FIX
+raw NoOp = return "select true;"
+
+readFile' :: FilePath -> IO String
+readFile' p = withFile p ReadMode hGetContents'
+
+hGetContents' :: Handle -> IO String
+hGetContents' h = hGetContents h >>= \s -> length s `seq` return s

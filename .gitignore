@@ -6,4 +6,4 @@
 *.core
 *.o
 TAGS
-
+cabal-dev
