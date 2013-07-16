@@ -43,7 +43,7 @@ migrate' migrations = do
 
 history :: Query
 history =
-  "CREATE TABLE IF NOT EXISTS migration_history (db VARCHAR(50), migration VARCHAR(50), action CHARACTER VARYING(20), at BIGINT, sql TEXT)"
+  "CREATE TABLE IF NOT EXISTS migration_history (db VARCHAR(50), migration VARCHAR(50), action CHARACTER VARYING(20), at TIMESTAMPTZ, sql TEXT)"
 
 versions :: Query
 versions =
