@@ -39,7 +39,7 @@ Library
                     , containers                    >= 0.4
                     , either                        >= 3.0.2
                     , transformers                  >= 0.2
-                    , cmdargs                       >= 0.9.3
+                    , cmdtheline                    >= 0.2.3
                     , lens                          >= 3.9.0.2
 
   GHC-Options:
@@ -49,8 +49,10 @@ Library
                     src
 
   Exposed-Modules:
+                    Paths_database_migrate
                     Database.Migrate
                     Database.Migrate.PostgreSQL
+                    Database.Migrate.Main
                     Database.Migrate.Migration
                     Database.Migrate.Migration.Ddl
                     Database.Migrate.Migration.Directory
